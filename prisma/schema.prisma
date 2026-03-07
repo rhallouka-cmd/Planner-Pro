@@ -1,8 +1,8 @@
-// Prisma schema for Habit and Task Tracker
+// Prisma schema for Advanced Habit + Task Tracker with Gamification
 // Learn more at https://pris.ly/d/prisma-schema
 
 generator client {
-  provider = "prisma-client"
+  provider = "prisma-client-js"
 }
 
 datasource db {
@@ -12,78 +12,163 @@ datasource db {
 
 // ==================== ENUMS ====================
 
-enum Category {
+enum TaskCategory {
   UNIVERSITY
-  PROJECT
+  PROJECTS
   GYM
-  GENERAL
 }
 
 // ==================== MODELS ====================
 
-// User model - stores user account information
+// User model - Core user data with gamification stats
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id              String   @id @default(cuid())
+  email           String   @unique
+  name            String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Gamification & Profile Stats
+  streakDays      Int      @default(0)
+  totalPoints     Int      @default(0)
+  level           Int      @default(1)
+  lastActiveDate  DateTime?
 
   // Relations
-  habits Task[]
-  tasks  Task[]
+  habits          Habit[]
+  tasks           Task[]
+  habitLogs       HabitLog[]
+  achievements    Achievement[]
+  analytics       AnalyticsSnapshot[]
+  freezeDays      FreezeDay[]
 
   @@map("users")
 }
 
-// Habit model - stores individual habits
+// Habit model - Recurring daily habits with streaks
 model Habit {
   id                String   @id @default(cuid())
   title             String
-  category          Category
-  streakCount       Int      @default(0)
+  description       String?
+  category          TaskCategory   @default(UNIVERSITY)
+  streakCount       Int      @default(0)      // Current consecutive days
+  maxStreak         Int      @default(0)      // Personal record
   isCompletedToday  Boolean  @default(false)
+  frequencyGoal     Int      @default(7)      // Times per week
+  pointsValue       Int      @default(100)    // Points awarded per completion
+  userId            String
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
-  userId            String
 
   // Relations
   user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   habitLogs HabitLog[]
+  freezeDays FreezeDay[]
 
   @@index([userId])
+  @@index([category])
   @@map("habits")
 }
 
-// Task model - stores individual tasks
+// Task model - One-time or deadline-based tasks
 model Task {
-  id          String   @id @default(cuid())
-  title       String
-  category    Category
-  dueDate     DateTime?
-  isCompleted Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  userId      String
+  id              String   @id @default(cuid())
+  title           String
+  description     String?
+  category        TaskCategory  @default(UNIVERSITY)
+  priority        Int      @default(1)       // 1-5 scale (1=low, 5=critical)
+  dueDate         DateTime?
+  isCompleted     Boolean  @default(false)
+  completedAt     DateTime?
+  pointsValue     Int      @default(50)      // Points awarded on completion
+  userId          String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   // Relations
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([category])
   @@map("tasks")
 }
 
-// HabitLog model - tracks when habits were completed (crucial for streak calculation)
+// HabitLog model - Tracks daily completion (crucial for streak calculation)
 model HabitLog {
-  id            String   @id @default(cuid())
-  habitId       String
-  dateCompleted DateTime @default(now())
-  createdAt     DateTime @default(now())
+  id              String   @id @default(cuid())
+  habitId         String
+  dateCompleted   DateTime
+  userId          String
+  pointsEarned    Int      @default(100)
+  createdAt       DateTime @default(now())
 
   // Relations
   habit Habit @relation(fields: [habitId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([habitId, dateCompleted])
+  @@index([userId])
   @@index([habitId])
   @@map("habit_logs")
+}
+
+// Achievement model - Gamification badges and milestones
+model Achievement {
+  id              String   @id @default(cuid())
+  userId          String
+  badge           String            // "📚 Scholar", "💪 Gym Bro", "🚀 DevOps", "🔥 On Fire"
+  title           String
+  description     String?
+  category        TaskCategory?
+  unlockedAt      DateTime @default(now())
+  
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("achievements")
+}
+
+// AnalyticsSnapshot model - Daily analytics for reporting
+model AnalyticsSnapshot {
+  id              String   @id @default(cuid())
+  userId          String
+  date            DateTime
+  
+  // Daily totals
+  tasksCompleted  Int      @default(0)
+  habitsCompleted Int      @default(0)
+  pointsEarned    Int      @default(0)
+  completionRate  Float    @default(0)      // 0-100 percentage
+  
+  // Category breakdown
+  universityCompleted Int  @default(0)
+  projectsCompleted   Int  @default(0)
+  gymCompleted        Int  @default(0)
+  
+  createdAt       DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@index([userId])
+  @@map("analytics_snapshots")
+}
+
+// FreezeDay model - Allow users to freeze streaks without losing progress
+model FreezeDay {
+  id              String   @id @default(cuid())
+  userId          String
+  habitId         String
+  freezeDate      DateTime
+  reason          String?
+  createdAt       DateTime @default(now())
+
+  // Relations
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  habit  Habit  @relation(fields: [habitId], references: [id], onDelete: Cascade)
+
+  @@unique([habitId, freezeDate])
+  @@map("freeze_days")
 }

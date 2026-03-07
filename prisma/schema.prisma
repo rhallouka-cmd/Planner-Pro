@@ -1,0 +1,89 @@
+// Prisma schema for Habit and Task Tracker
+// Learn more at https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==================== ENUMS ====================
+
+enum Category {
+  UNIVERSITY
+  PROJECT
+  GYM
+  GENERAL
+}
+
+// ==================== MODELS ====================
+
+// User model - stores user account information
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  habits Task[]
+  tasks  Task[]
+
+  @@map("users")
+}
+
+// Habit model - stores individual habits
+model Habit {
+  id                String   @id @default(cuid())
+  title             String
+  category          Category
+  streakCount       Int      @default(0)
+  isCompletedToday  Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  userId            String
+
+  // Relations
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  habitLogs HabitLog[]
+
+  @@index([userId])
+  @@map("habits")
+}
+
+// Task model - stores individual tasks
+model Task {
+  id          String   @id @default(cuid())
+  title       String
+  category    Category
+  dueDate     DateTime?
+  isCompleted Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  userId      String
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("tasks")
+}
+
+// HabitLog model - tracks when habits were completed (crucial for streak calculation)
+model HabitLog {
+  id            String   @id @default(cuid())
+  habitId       String
+  dateCompleted DateTime @default(now())
+  createdAt     DateTime @default(now())
+
+  // Relations
+  habit Habit @relation(fields: [habitId], references: [id], onDelete: Cascade)
+
+  @@unique([habitId, dateCompleted])
+  @@index([habitId])
+  @@map("habit_logs")
+}

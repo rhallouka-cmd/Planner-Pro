@@ -37,6 +37,9 @@ export default function Home() {
   const [editingTitle, setEditingTitle] = useState('');
   const [editingCategory, setEditingCategory] = useState<'university' | 'projects' | 'gym'>('university');
   const [nextId, setNextId] = useState(7);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
 
   const toggleHabit = (category: keyof HabitsState, id: number) => {
     setHabits({
@@ -220,16 +223,122 @@ export default function Home() {
             </div>
             <h1 className="text-lg sm:text-2xl font-black text-slate-50 truncate">Planner Pro</h1>
           </div>
-          <div className="flex items-center gap-3 sm:gap-6">
-            <button className="p-2 sm:p-2.5 hover:bg-slate-800 rounded-lg transition-colors active:bg-slate-700" title="Notifications">
+          <div className="flex items-center gap-3 sm:gap-6 relative">
+            <button 
+              onClick={() => {
+                setShowNotifications(!showNotifications);
+                setShowSettings(false);
+                setShowProfile(false);
+              }}
+              className="p-2 sm:p-2.5 hover:bg-slate-800 rounded-lg transition-colors active:bg-slate-700" 
+              title="Notifications"
+            >
               <Bell className="w-4 h-4 sm:w-5 sm:h-5 text-slate-400" />
             </button>
-            <button className="p-2 sm:p-2.5 hover:bg-slate-800 rounded-lg transition-colors active:bg-slate-700" title="Settings">
+            <button 
+              onClick={() => {
+                setShowSettings(!showSettings);
+                setShowNotifications(false);
+                setShowProfile(false);
+              }}
+              className="p-2 sm:p-2.5 hover:bg-slate-800 rounded-lg transition-colors active:bg-slate-700" 
+              title="Settings"
+            >
               <Settings className="w-4 h-4 sm:w-5 sm:h-5 text-slate-400" />
             </button>
-            <button className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-lg flex items-center justify-center text-white font-bold text-xs sm:text-sm hover:shadow-lg hover:shadow-indigo-500/50 transition-all active:scale-95" title="Profile">
+            <button 
+              onClick={() => {
+                setShowProfile(!showProfile);
+                setShowNotifications(false);
+                setShowSettings(false);
+              }}
+              className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-lg flex items-center justify-center text-white font-bold text-xs sm:text-sm hover:shadow-lg hover:shadow-indigo-500/50 transition-all active:scale-95" 
+              title="Profile"
+            >
               U
             </button>
+
+            {/* Notifications Dropdown */}
+            {showNotifications && (
+              <div className="absolute top-full right-0 mt-2 w-72 bg-slate-800 border border-slate-700 rounded-xl shadow-xl z-50">
+                <div className="p-4 border-b border-slate-700">
+                  <h3 className="font-bold text-slate-50">Notifications</h3>
+                </div>
+                <div className="space-y-3 p-4 max-h-64 overflow-y-auto">
+                  <div className="p-3 bg-slate-700/50 rounded-lg border-l-2 border-indigo-500">
+                    <p className="text-sm text-slate-100 font-medium">Great streak! 🔥</p>
+                    <p className="text-xs text-slate-400">You've completed 5 tasks today</p>
+                  </div>
+                  <div className="p-3 bg-slate-700/50 rounded-lg border-l-2 border-cyan-500">
+                    <p className="text-sm text-slate-100 font-medium">Reminder: Gym time</p>
+                    <p className="text-xs text-slate-400">You haven't logged your workout yet</p>
+                  </div>
+                  <div className="p-3 bg-slate-700/50 rounded-lg border-l-2 border-purple-500">
+                    <p className="text-sm text-slate-100 font-medium">New feature available</p>
+                    <p className="text-xs text-slate-400">Check out our progress analytics</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Settings Dropdown */}
+            {showSettings && (
+              <div className="absolute top-full right-0 mt-2 w-64 bg-slate-800 border border-slate-700 rounded-xl shadow-xl z-50">
+                <div className="p-4 border-b border-slate-700">
+                  <h3 className="font-bold text-slate-50">Settings</h3>
+                </div>
+                <div className="space-y-2 p-4">
+                  <button className="w-full text-left px-4 py-2 hover:bg-slate-700 rounded-lg transition-colors text-slate-100 text-sm font-medium">
+                    📊 Theme
+                  </button>
+                  <button className="w-full text-left px-4 py-2 hover:bg-slate-700 rounded-lg transition-colors text-slate-100 text-sm font-medium">
+                    🔔 Notifications
+                  </button>
+                  <button className="w-full text-left px-4 py-2 hover:bg-slate-700 rounded-lg transition-colors text-slate-100 text-sm font-medium">
+                    🔒 Privacy
+                  </button>
+                  <button className="w-full text-left px-4 py-2 hover:bg-slate-700 rounded-lg transition-colors text-slate-100 text-sm font-medium">
+                    ⚙️ Preferences
+                  </button>
+                  <hr className="border-slate-700 my-2" />
+                  <button className="w-full text-left px-4 py-2 hover:bg-red-500/20 rounded-lg transition-colors text-red-400 text-sm font-medium">
+                    🚪 Sign Out
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Profile Dropdown */}
+            {showProfile && (
+              <div className="absolute top-full right-0 mt-2 w-64 bg-slate-800 border border-slate-700 rounded-xl shadow-xl z-50">
+                <div className="p-4 border-b border-slate-700">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-lg flex items-center justify-center text-white font-bold text-lg">
+                      U
+                    </div>
+                    <div>
+                      <p className="font-bold text-slate-50">User Profile</p>
+                      <p className="text-xs text-slate-400">user@planner.pro</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-2 p-4">
+                  <button className="w-full text-left px-4 py-2 hover:bg-slate-700 rounded-lg transition-colors text-slate-100 text-sm font-medium">
+                    👤 My Profile
+                  </button>
+                  <button className="w-full text-left px-4 py-2 hover:bg-slate-700 rounded-lg transition-colors text-slate-100 text-sm font-medium">
+                    ⭐ Achievements
+                  </button>
+                  <button className="w-full text-left px-4 py-2 hover:bg-slate-700 rounded-lg transition-colors text-slate-100 text-sm font-medium">
+                    📈 Stats
+                  </button>
+                  <hr className="border-slate-700 my-2" />
+                  <button className="w-full text-left px-4 py-2 hover:bg-red-500/20 rounded-lg transition-colors text-red-400 text-sm font-medium">
+                    🚪 Logout
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </nav>

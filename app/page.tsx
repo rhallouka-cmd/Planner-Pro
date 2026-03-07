@@ -213,28 +213,28 @@ export default function Home() {
     <div className="min-h-screen bg-slate-950 text-slate-50">
       {/* Navigation Bar */}
       <nav className="border-b border-slate-800 bg-slate-900/50 backdrop-blur sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-8 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-cyan-400 rounded-lg flex items-center justify-center font-bold text-slate-950">
+        <div className="max-w-7xl mx-auto px-4 sm:px-8 py-3 sm:py-4 flex items-center justify-between">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 bg-gradient-to-br from-indigo-500 to-cyan-400 rounded-lg flex items-center justify-center font-bold text-slate-950 text-sm sm:text-base">
               P
             </div>
-            <h1 className="text-2xl font-black text-slate-50">Planner Pro</h1>
+            <h1 className="text-lg sm:text-2xl font-black text-slate-50 truncate">Planner Pro</h1>
           </div>
-          <div className="flex items-center gap-6">
-            <button className="p-2 hover:bg-slate-800 rounded-lg transition-colors">
-              <Bell className="w-5 h-5 text-slate-400" />
+          <div className="flex items-center gap-3 sm:gap-6">
+            <button className="p-2 sm:p-2.5 hover:bg-slate-800 rounded-lg transition-colors active:bg-slate-700" title="Notifications">
+              <Bell className="w-4 h-4 sm:w-5 sm:h-5 text-slate-400" />
             </button>
-            <button className="p-2 hover:bg-slate-800 rounded-lg transition-colors">
-              <Settings className="w-5 h-5 text-slate-400" />
+            <button className="p-2 sm:p-2.5 hover:bg-slate-800 rounded-lg transition-colors active:bg-slate-700" title="Settings">
+              <Settings className="w-4 h-4 sm:w-5 sm:h-5 text-slate-400" />
             </button>
-            <button className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-lg flex items-center justify-center text-white font-bold">
+            <button className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-lg flex items-center justify-center text-white font-bold text-xs sm:text-sm hover:shadow-lg hover:shadow-indigo-500/50 transition-all active:scale-95" title="Profile">
               U
             </button>
           </div>
         </div>
       </nav>
 
-      <div className="max-w-7xl mx-auto px-8 py-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-8 py-8 sm:py-12">
         {/* Hero Section: Progress & Streaks */}
         <div className="mb-16 bg-gradient-to-br from-slate-900 to-slate-800 border border-slate-700 rounded-3xl p-8 shadow-2xl shadow-indigo-900/20">
           <div className="flex items-center justify-between mb-8">
@@ -286,21 +286,21 @@ export default function Home() {
         </div>
 
         {/* Add New Task Section */}
-        <div className="mb-12 bg-slate-800/50 backdrop-blur border border-slate-700 rounded-2xl p-6">
-          <h3 className="text-lg font-bold text-slate-50 mb-4">Add New Task</h3>
-          <div className="flex gap-3 flex-col sm:flex-row">
+        <div className="mb-12 bg-slate-800/50 backdrop-blur border border-slate-700 rounded-2xl p-4 sm:p-6">
+          <h3 className="text-base sm:text-lg font-bold text-slate-50 mb-4">Add New Task</h3>
+          <div className="flex gap-2 sm:gap-3 flex-col sm:flex-row">
             <input
               type="text"
               value={newTaskTitle}
               onChange={(e) => setNewTaskTitle(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && addHabit()}
               placeholder="What's your next task?"
-              className="flex-grow px-4 py-3 bg-slate-900 border border-slate-600 rounded-xl text-slate-50 placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30 transition-all"
+              className="flex-grow px-3 sm:px-4 py-2.5 sm:py-3 bg-slate-900 border border-slate-600 rounded-lg sm:rounded-xl text-sm sm:text-base text-slate-50 placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30 transition-all"
             />
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value as keyof HabitsState)}
-              className="px-4 py-3 bg-slate-900 border border-slate-600 rounded-xl text-slate-50 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30 transition-all"
+              className="px-3 sm:px-4 py-2.5 sm:py-3 bg-slate-900 border border-slate-600 rounded-lg sm:rounded-xl text-sm sm:text-base text-slate-50 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30 transition-all"
             >
               <option value="university">🎓 University</option>
               <option value="projects">💻 Projects</option>
@@ -308,10 +308,11 @@ export default function Home() {
             </select>
             <button
               onClick={addHabit}
-              className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white font-bold rounded-xl transition-all shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 flex items-center gap-2 whitespace-nowrap"
+              className="px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 active:scale-95 text-white font-bold text-sm sm:text-base rounded-lg sm:rounded-xl transition-all shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 flex items-center justify-center gap-2 whitespace-nowrap"
             >
-              <Plus className="w-5 h-5" />
-              Add Task
+              <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span className="hidden sm:inline">Add Task</span>
+              <span className="sm:hidden">Add</span>
             </button>
           </div>
         </div>

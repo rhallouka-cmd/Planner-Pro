@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { updateUserStats, getAchievementDisplay } from '@/lib/gamification';
 
 // POST /api/habits/[id]/toggle - Toggle habit completion status
 export async function POST(
@@ -35,7 +36,9 @@ export async function POST(
     });
 
     let isCompletedToday: boolean;
-    let habitLog;
+    let pointsAwarded = 0;
+    let newAchievements: string[] = [];
+    let newStats: any = {};
 
     if (todayLog) {
       // Remove the log entry (mark as incomplete)
@@ -54,23 +57,38 @@ export async function POST(
         },
       });
       isCompletedToday = true;
+      pointsAwarded = habit.pointsValue || 100;
 
       // Award points to the user
       await prisma.user.update({
         where: { id: habit.userId },
         data: {
           totalPoints: {
-            increment: habit.pointsValue,
+            increment: pointsAwarded,
           },
         },
       });
+
+      // Update user overall stats (streak, level, achievements)
+      const stats = await updateUserStats(habit.userId);
+      newAchievements = stats.newAchievements;
+      newStats = {
+        streakDays: stats.streakDays,
+        level: stats.level,
+      };
     }
+
+    const achievementMessages = newAchievements
+      .map((id) => getAchievementDisplay(id))
+      .filter(Boolean);
 
     return NextResponse.json(
       {
         message: isCompletedToday ? 'Habit marked complete' : 'Habit marked incomplete',
         isCompletedToday,
-        pointsAwarded: isCompletedToday ? habit.pointsValue : 0,
+        pointsAwarded,
+        newAchievements: achievementMessages,
+        stats: newStats,
       },
       { status: 200 }
     );

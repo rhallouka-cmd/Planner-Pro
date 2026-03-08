@@ -74,13 +74,14 @@ export default function Home() {
 
   // Fetch habits from API on mount
   useEffect(() => {
-    const fetchHabits = async () => {
+    const fetchInitialData = async () => {
       try {
         setLoading(true);
-        const response = await fetch('/api/habits');
-        if (!response.ok) throw new Error('Failed to fetch habits');
         
-        const apiHabits: APIHabit[] = await response.json();
+        // Fetch habits
+        const habitsResponse = await fetch('/api/habits');
+        if (!habitsResponse.ok) throw new Error('Failed to fetch habits');
+        const apiHabits: APIHabit[] = await habitsResponse.json();
         
         // Map API habits to component state, organized by category
         const categorized: HabitsState = {
@@ -93,7 +94,7 @@ export default function Home() {
           const habit: Habit = {
             id: apiHabit.id,
             title: apiHabit.title,
-            completed: false, // Initialize as not completed
+            completed: false,
           };
           
           const categoryKey = apiHabit.category.toLowerCase() as keyof HabitsState;
@@ -101,9 +102,22 @@ export default function Home() {
         });
 
         setHabits(categorized);
+
+        // Fetch user stats
+        const userResponse = await fetch('/api/user');
+        if (userResponse.ok) {
+          const userStats = await userResponse.json();
+          setGamification({
+            streakDays: userStats.streakDays,
+            totalPoints: userStats.totalPoints,
+            level: userStats.level,
+            achievements: userStats.achievements || [],
+          });
+        }
+
         setError(null);
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'Failed to fetch habits';
+        const message = err instanceof Error ? err.message : 'Failed to fetch data';
         setError(message);
         showToast(message, 'error');
       } finally {
@@ -111,7 +125,7 @@ export default function Home() {
       }
     };
 
-    fetchHabits();
+    fetchInitialData();
   }, []);
 
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
@@ -169,12 +183,31 @@ export default function Home() {
         ),
       });
 
-      // Update gamification points
+      // Update gamification with real stats and achievements
       if (result.isCompletedToday && result.pointsAwarded) {
-        setGamification((prev) => ({
-          ...prev,
-          totalPoints: prev.totalPoints + result.pointsAwarded,
-        }));
+        setGamification((prev) => {
+          const updated = {
+            ...prev,
+            totalPoints: prev.totalPoints + result.pointsAwarded,
+          };
+          
+          // Update with new stats if provided
+          if (result.stats) {
+            updated.streakDays = result.stats.streakDays;
+            updated.level = result.stats.level;
+          }
+          
+          // Add achievements if unlocked
+          if (result.newAchievements && result.newAchievements.length > 0) {
+            updated.achievements = [...prev.achievements, ...result.newAchievements];
+            result.newAchievements.forEach((achievement: string) => {
+              showToast(`🏆 Achievement Unlocked! ${achievement}`, 'success');
+            });
+          }
+
+          return updated;
+        });
+        
         showToast(`🎉 Task completed! +${result.pointsAwarded} points`, 'success');
       } else {
         showToast('↩️ Task marked incomplete', 'info');

@@ -4,11 +4,15 @@ import { prisma } from '@/lib/prisma';
 // POST /api/habits/[id]/toggle - Toggle habit completion status
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
-    const today = new Date().toISOString().split('T')[0];
+    const { id } = await params;
+    
+    // Get today's date at midnight UTC
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+    const todayDateTime = today.toISOString();
 
     // Find or create the habit
     const habit = await prisma.habit.findUnique({
@@ -26,7 +30,7 @@ export async function POST(
     const todayLog = await prisma.habitLog.findFirst({
       where: {
         habitId: id,
-        dateCompleted: today,
+        dateCompleted: todayDateTime,
       },
     });
 
@@ -44,7 +48,9 @@ export async function POST(
       habitLog = await prisma.habitLog.create({
         data: {
           habitId: id,
-          dateCompleted: today,
+          dateCompleted: todayDateTime,
+          userId: habit.userId,
+          pointsEarned: habit.pointsValue || 100,
         },
       });
       isCompletedToday = true;

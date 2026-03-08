@@ -4,10 +4,10 @@ import { prisma } from '@/lib/prisma';
 // GET /api/habits/[id] - Fetch a single habit
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
 
     const habit = await prisma.habit.findUnique({
       where: { id },
@@ -33,10 +33,10 @@ export async function GET(
 // PUT /api/habits/[id] - Update a habit
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const body = await request.json();
     const { title, description, category } = body;
 
@@ -68,10 +68,10 @@ export async function PUT(
 // DELETE /api/habits/[id] - Delete a habit
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
 
     await prisma.habit.delete({
       where: { id },

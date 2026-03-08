@@ -1,10 +1,20 @@
 'use client';
 
-import { useState } from 'react';
-import { Plus, Pencil, Trash2, X, CheckCircle2, Circle, Flame, Settings, Bell, TrendingUp, Award, Zap, Calendar, Check, AlertCircle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Plus, Pencil, Trash2, X, CheckCircle2, Circle, Flame, Settings, Bell, TrendingUp, Award, Zap, Calendar, Check, AlertCircle, Loader } from 'lucide-react';
+
+interface APIHabit {
+  id: string;
+  title: string;
+  description?: string;
+  category: 'UNIVERSITY' | 'PROJECTS' | 'GYM';
+  streakCount: number;
+  maxStreak: number;
+  pointsValue: number;
+}
 
 interface Habit {
-  id: number;
+  id: string;
   title: string;
   completed: boolean;
 }
@@ -29,43 +39,80 @@ interface Toast {
   timestamp: number;
 }
 
+interface APIResponse<T> {
+  data?: T;
+  message?: string;
+  error?: string;
+}
+
 export default function Home() {
   const [habits, setHabits] = useState<HabitsState>({
-    university: [
-      { id: 1, title: 'ESISA Data Structures Assignment', completed: false },
-      { id: 2, title: 'Read Next.js docs for web portfolio', completed: true },
-      { id: 3, title: 'Complete Linear Algebra problem set', completed: false },
-    ],
-    projects: [
-      { id: 4, title: 'Push Professor Ai commits to GitHub', completed: false },
-      { id: 5, title: 'Review digital marketing metrics', completed: true },
-      { id: 6, title: 'Deploy new feature to production', completed: false },
-    ],
-    gym: [
-      { id: 7, title: 'Hit new bench PR', completed: false },
-      { id: 8, title: 'Drink 3L water', completed: true },
-      { id: 9, title: '45min cardio session', completed: false },
-    ],
+    university: [],
+    projects: [],
+    gym: [],
   });
 
   const [gamification, setGamification] = useState<GamificationStats>({
     streakDays: 12,
-    totalPoints: 8450,
-    level: 5,
-    achievements: ['📚 Scholar', '💪 Gym Bro', '🚀 DevOps', '🔥 On Fire'],
+    totalPoints: 0,
+    level: 1,
+    achievements: [],
   });
 
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<'university' | 'projects' | 'gym'>('university');
-  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState('');
   const [editingCategory, setEditingCategory] = useState<'university' | 'projects' | 'gym'>('university');
-  const [nextId, setNextId] = useState(10);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'analytics' | 'university' | 'projects' | 'gym'>('dashboard');
   const [toasts, setToasts] = useState<Toast[]>([]);
+
+  // Fetch habits from API on mount
+  useEffect(() => {
+    const fetchHabits = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch('/api/habits');
+        if (!response.ok) throw new Error('Failed to fetch habits');
+        
+        const apiHabits: APIHabit[] = await response.json();
+        
+        // Map API habits to component state, organized by category
+        const categorized: HabitsState = {
+          university: [],
+          projects: [],
+          gym: [],
+        };
+
+        apiHabits.forEach((apiHabit) => {
+          const habit: Habit = {
+            id: apiHabit.id,
+            title: apiHabit.title,
+            completed: false, // Initialize as not completed
+          };
+          
+          const categoryKey = apiHabit.category.toLowerCase() as keyof HabitsState;
+          categorized[categoryKey].push(habit);
+        });
+
+        setHabits(categorized);
+        setError(null);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to fetch habits';
+        setError(message);
+        showToast(message, 'error');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchHabits();
+  }, []);
 
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
     const id = Date.now().toString();
@@ -103,72 +150,157 @@ export default function Home() {
     },
   };
 
-  const toggleHabit = (category: keyof HabitsState, id: number) => {
-    setHabits({
-      ...habits,
-      [category]: habits[category].map((habit) =>
-        habit.id === id ? { ...habit, completed: !habit.completed } : habit
-      ),
-    });
+  const toggleHabit = async (category: keyof HabitsState, id: string) => {
+    try {
+      const response = await fetch(`/api/habits/${id}/toggle`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
 
-    // Gamification: Award points on completion
-    setGamification((prev) => ({
-      ...prev,
-      totalPoints: prev.totalPoints + 50,
-    }));
+      if (!response.ok) throw new Error('Failed to toggle habit');
+      
+      const result = await response.json();
+      
+      // Update local state
+      setHabits({
+        ...habits,
+        [category]: habits[category].map((habit) =>
+          habit.id === id ? { ...habit, completed: result.isCompletedToday } : habit
+        ),
+      });
 
-    const completedStatus = !habits[category].find((h) => h.id === id)?.completed;
-    showToast(
-      completedStatus ? '🎉 Task completed! +50 points' : '↩️ Task marked incomplete',
-      completedStatus ? 'success' : 'info'
-    );
+      // Update gamification points
+      if (result.isCompletedToday && result.pointsAwarded) {
+        setGamification((prev) => ({
+          ...prev,
+          totalPoints: prev.totalPoints + result.pointsAwarded,
+        }));
+        showToast(`🎉 Task completed! +${result.pointsAwarded} points`, 'success');
+      } else {
+        showToast('↩️ Task marked incomplete', 'info');
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to toggle habit';
+      showToast(message, 'error');
+    }
   };
 
-  const addHabit = () => {
-    if (newTaskTitle.trim()) {
+  const addHabit = async () => {
+    if (!newTaskTitle.trim()) {
+      showToast('Please enter a task title', 'error');
+      return;
+    }
+
+    try {
+      const categoryMap: Record<string, string> = {
+        university: 'UNIVERSITY',
+        projects: 'PROJECTS',
+        gym: 'GYM',
+      };
+
+      const response = await fetch('/api/habits', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: newTaskTitle,
+          category: categoryMap[selectedCategory],
+          description: '',
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to create habit');
+      
+      const newHabit = await response.json();
+
+      // Add to appropriate category
       setHabits({
         ...habits,
         [selectedCategory]: [
           ...habits[selectedCategory],
-          { id: nextId, title: newTaskTitle, completed: false },
+          {
+            id: newHabit.id,
+            title: newHabit.title,
+            completed: false,
+          },
         ],
       });
+
       showToast(`✅ Task added to ${categoryConfig[selectedCategory].label}`);
       setNewTaskTitle('');
-      setNextId(nextId + 1);
-    } else {
-      showToast('Please enter a task title', 'error');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to add task';
+      showToast(message, 'error');
     }
   };
 
-  const deleteHabit = (category: keyof HabitsState, id: number) => {
-    const deletedHabit = habits[category].find((h) => h.id === id);
-    setHabits({
-      ...habits,
-      [category]: habits[category].filter((habit) => habit.id !== id),
-    });
-    showToast(`🗑️ "${deletedHabit?.title}" deleted`, 'info');
+  const deleteHabit = async (category: keyof HabitsState, id: string) => {
+    try {
+      const deletedHabit = habits[category].find((h) => h.id === id);
+      
+      const response = await fetch(`/api/habits/${id}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      if (!response.ok) throw new Error('Failed to delete habit');
+
+      setHabits({
+        ...habits,
+        [category]: habits[category].filter((habit) => habit.id !== id),
+      });
+
+      showToast(`🗑️ "${deletedHabit?.title}" deleted`, 'info');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to delete habit';
+      showToast(message, 'error');
+    }
   };
 
-  const startEdit = (id: number, title: string, category: keyof HabitsState) => {
+  const startEdit = (id: string, title: string, category: keyof HabitsState) => {
     setEditingId(id);
     setEditingTitle(title);
     setEditingCategory(category);
   };
 
-  const saveEdit = () => {
-    if (editingTitle.trim() && editingId !== null) {
+  const saveEdit = async () => {
+    if (!editingTitle.trim() || editingId === null) {
+      showToast('Task title cannot be empty', 'error');
+      return;
+    }
+
+    try {
+      const categoryMap: Record<string, string> = {
+        university: 'UNIVERSITY',
+        projects: 'PROJECTS',
+        gym: 'GYM',
+      };
+
+      const response = await fetch(`/api/habits/${editingId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: editingTitle,
+          category: categoryMap[editingCategory],
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to update habit');
+      
+      const updatedHabit = await response.json();
+
       setHabits({
         ...habits,
         [editingCategory]: habits[editingCategory].map((habit) =>
-          habit.id === editingId ? { ...habit, title: editingTitle } : habit
+          habit.id === editingId ? { ...habit, title: updatedHabit.title } : habit
         ),
       });
+
       showToast('✏️ Task updated');
       setEditingId(null);
       setEditingTitle('');
-    } else {
-      showToast('Task title cannot be empty', 'error');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to update task';
+      showToast(message, 'error');
     }
   };
 
@@ -434,7 +566,33 @@ export default function Home() {
           ))}
         </div>
 
-        {/* DASHBOARD TAB */}
+        {/* Loading State */}
+        {loading && (
+          <div className="flex items-center justify-center min-h-96">
+            <div className="text-center">
+              <Loader className="w-12 h-12 text-indigo-500 animate-spin mx-auto mb-4" />
+              <p className="text-slate-400 font-medium">Loading your habits...</p>
+            </div>
+          </div>
+        )}
+
+        {/* Error State */}
+        {error && (
+          <div className="mb-8 p-4 bg-red-500/20 border border-red-500/50 rounded-xl">
+            <p className="text-red-300 font-medium">Error: {error}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="mt-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+
+        {/* Content - Only show if not loading */}
+        {!loading && (
+          <>
+
         {activeTab === 'dashboard' && (
           <>
             {/* Gamification Score Card */}
@@ -642,6 +800,8 @@ export default function Home() {
             </div>
             {renderCategoryCard(activeTab as keyof HabitsState)}
           </div>
+        )}
+          </>
         )}
 
         {/* Toast Notification Container */}

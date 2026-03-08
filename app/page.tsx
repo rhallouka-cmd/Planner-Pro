@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Plus, Pencil, Trash2, X, CheckCircle2, Circle, Flame, Settings, Bell, TrendingUp, Award, Zap, Calendar } from 'lucide-react';
+import { Plus, Pencil, Trash2, X, CheckCircle2, Circle, Flame, Settings, Bell, TrendingUp, Award, Zap, Calendar, Check, AlertCircle } from 'lucide-react';
 
 interface Habit {
   id: number;
@@ -20,6 +20,13 @@ interface GamificationStats {
   totalPoints: number;
   level: number;
   achievements: string[];
+}
+
+interface Toast {
+  id: string;
+  message: string;
+  type: 'success' | 'error' | 'info';
+  timestamp: number;
 }
 
 export default function Home() {
@@ -58,73 +65,16 @@ export default function Home() {
   const [showSettings, setShowSettings] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'analytics' | 'university' | 'projects' | 'gym'>('dashboard');
+  const [toasts, setToasts] = useState<Toast[]>([]);
 
-  const toggleHabit = (category: keyof HabitsState, id: number) => {
-    setHabits({
-      ...habits,
-      [category]: habits[category].map((habit) =>
-        habit.id === id ? { ...habit, completed: !habit.completed } : habit
-      ),
-    });
-
-    // Gamification: Award points on completion
-    setGamification((prev) => ({
-      ...prev,
-      totalPoints: prev.totalPoints + 50,
-    }));
+  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+    const id = Date.now().toString();
+    const newToast: Toast = { id, message, type, timestamp: Date.now() };
+    setToasts((prev) => [...prev, newToast]);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, 3000);
   };
-
-  const addHabit = () => {
-    if (newTaskTitle.trim()) {
-      setHabits({
-        ...habits,
-        [selectedCategory]: [
-          ...habits[selectedCategory],
-          { id: nextId, title: newTaskTitle, completed: false },
-        ],
-      });
-      setNewTaskTitle('');
-      setNextId(nextId + 1);
-    }
-  };
-
-  const deleteHabit = (category: keyof HabitsState, id: number) => {
-    setHabits({
-      ...habits,
-      [category]: habits[category].filter((habit) => habit.id !== id),
-    });
-  };
-
-  const startEdit = (id: number, title: string, category: keyof HabitsState) => {
-    setEditingId(id);
-    setEditingTitle(title);
-    setEditingCategory(category);
-  };
-
-  const saveEdit = () => {
-    if (editingTitle.trim() && editingId !== null) {
-      setHabits({
-        ...habits,
-        [editingCategory]: habits[editingCategory].map((habit) =>
-          habit.id === editingId ? { ...habit, title: editingTitle } : habit
-        ),
-      });
-      setEditingId(null);
-      setEditingTitle('');
-    }
-  };
-
-  const calculateStats = (category: keyof HabitsState) => {
-    const items = habits[category];
-    const completedCount = items.filter((h) => h.completed).length;
-    const totalCount = items.length;
-    const percentage = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
-    return { completedCount, totalCount, percentage };
-  };
-
-  const allItems = [...habits.university, ...habits.projects, ...habits.gym];
-  const completedItems = allItems.filter((item) => item.completed).length;
-  const completionPercentage = allItems.length > 0 ? Math.round((completedItems / allItems.length) * 100) : 0;
 
   const categoryConfig = {
     university: {
@@ -152,6 +102,87 @@ export default function Home() {
       description: 'Workout splits, PRs, consistency, and daily metrics',
     },
   };
+
+  const toggleHabit = (category: keyof HabitsState, id: number) => {
+    setHabits({
+      ...habits,
+      [category]: habits[category].map((habit) =>
+        habit.id === id ? { ...habit, completed: !habit.completed } : habit
+      ),
+    });
+
+    // Gamification: Award points on completion
+    setGamification((prev) => ({
+      ...prev,
+      totalPoints: prev.totalPoints + 50,
+    }));
+
+    const completedStatus = !habits[category].find((h) => h.id === id)?.completed;
+    showToast(
+      completedStatus ? '🎉 Task completed! +50 points' : '↩️ Task marked incomplete',
+      completedStatus ? 'success' : 'info'
+    );
+  };
+
+  const addHabit = () => {
+    if (newTaskTitle.trim()) {
+      setHabits({
+        ...habits,
+        [selectedCategory]: [
+          ...habits[selectedCategory],
+          { id: nextId, title: newTaskTitle, completed: false },
+        ],
+      });
+      showToast(`✅ Task added to ${categoryConfig[selectedCategory].label}`);
+      setNewTaskTitle('');
+      setNextId(nextId + 1);
+    } else {
+      showToast('Please enter a task title', 'error');
+    }
+  };
+
+  const deleteHabit = (category: keyof HabitsState, id: number) => {
+    const deletedHabit = habits[category].find((h) => h.id === id);
+    setHabits({
+      ...habits,
+      [category]: habits[category].filter((habit) => habit.id !== id),
+    });
+    showToast(`🗑️ "${deletedHabit?.title}" deleted`, 'info');
+  };
+
+  const startEdit = (id: number, title: string, category: keyof HabitsState) => {
+    setEditingId(id);
+    setEditingTitle(title);
+    setEditingCategory(category);
+  };
+
+  const saveEdit = () => {
+    if (editingTitle.trim() && editingId !== null) {
+      setHabits({
+        ...habits,
+        [editingCategory]: habits[editingCategory].map((habit) =>
+          habit.id === editingId ? { ...habit, title: editingTitle } : habit
+        ),
+      });
+      showToast('✏️ Task updated');
+      setEditingId(null);
+      setEditingTitle('');
+    } else {
+      showToast('Task title cannot be empty', 'error');
+    }
+  };
+
+  const calculateStats = (category: keyof HabitsState) => {
+    const items = habits[category];
+    const completedCount = items.filter((h) => h.completed).length;
+    const totalCount = items.length;
+    const percentage = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+    return { completedCount, totalCount, percentage };
+  };
+
+  const allItems = [...habits.university, ...habits.projects, ...habits.gym];
+  const completedItems = allItems.filter((item) => item.completed).length;
+  const completionPercentage = allItems.length > 0 ? Math.round((completedItems / allItems.length) * 100) : 0;
 
   const renderCategoryCard = (category: keyof HabitsState) => {
     const config = categoryConfig[category];
@@ -612,6 +643,31 @@ export default function Home() {
             {renderCategoryCard(activeTab as keyof HabitsState)}
           </div>
         )}
+
+        {/* Toast Notification Container */}
+        <div className="fixed bottom-6 right-6 z-50 space-y-3 pointer-events-none">
+          {toasts.map((toast) => (
+            <div
+              key={toast.id}
+              className={`flex items-center gap-3 px-4 sm:px-6 py-3 sm:py-4 rounded-lg backdrop-blur border shadow-lg animate-in fade-in slide-in-from-bottom-4 transition-all pointer-events-auto ${
+                toast.type === 'success'
+                  ? 'bg-green-500/20 border-green-500/50 text-green-300'
+                  : toast.type === 'error'
+                  ? 'bg-red-500/20 border-red-500/50 text-red-300'
+                  : 'bg-cyan-500/20 border-cyan-500/50 text-cyan-300'
+              }`}
+            >
+              {toast.type === 'success' ? (
+                <Check className="w-5 h-5 flex-shrink-0" />
+              ) : toast.type === 'error' ? (
+                <AlertCircle className="w-5 h-5 flex-shrink-0" />
+              ) : (
+                <Zap className="w-5 h-5 flex-shrink-0" />
+              )}
+              <span className="text-sm sm:text-base font-medium">{toast.message}</span>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

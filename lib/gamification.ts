@@ -144,15 +144,18 @@ export function calculateLevel(points: number): number {
  * Check and unlock achievements for a user
  */
 export async function checkAndUnlockAchievements(userId: string): Promise<string[]> {
-  const user = await prisma.user.findUnique({ where: { id: userId } });
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    include: { achievements: true, habitLogs: true, habits: true },
+  });
   if (!user) return [];
 
   const unlockedAchievements: string[] = [];
-  const existingAchievements = user.achievements || [];
+  const existingAchievementIds = (user.achievements || []).map((a) => a.id);
 
   // Check each achievement
   for (const [key, achievement] of Object.entries(ACHIEVEMENTS)) {
-    if (existingAchievements.includes(achievement.id)) {
+    if (existingAchievementIds.includes(achievement.id)) {
       continue; // Already unlocked
     }
 
@@ -194,7 +197,7 @@ export async function checkAndUnlockAchievements(userId: string): Promise<string
         const logsByCategory = await prisma.habitLog.findMany({
           where: { userId },
           include: { habit: { select: { category: true } } },
-          distinct: ['habit_id'],
+          distinct: ['habitId'],
         });
         const categories = new Set(
           logsByCategory.map((log) => log.habit.category)
@@ -209,15 +212,18 @@ export async function checkAndUnlockAchievements(userId: string): Promise<string
 
     if (shouldUnlock) {
       unlockedAchievements.push(achievement.id);
-      existingAchievements.push(achievement.id);
     }
   }
 
-  // Update user with new achievements
+  // Update user with new achievements (connect them via relation)
   if (unlockedAchievements.length > 0) {
     await prisma.user.update({
       where: { id: userId },
-      data: { achievements: existingAchievements },
+      data: {
+        achievements: {
+          connect: unlockedAchievements.map((id) => ({ id })),
+        },
+      },
     });
   }
 
@@ -263,11 +269,10 @@ export async function createAnalyticsSnapshot(userId: string): Promise<void> {
     data: {
       userId,
       date: today,
-      totalHabits: user.habits.length,
-      completedHabits: todaysLogs.length,
+      habitsCompleted: todaysLogs.length,
+      tasksCompleted: 0,
       pointsEarned: todaysLogs.reduce((sum, log) => sum + (log.pointsEarned || 0), 0),
-      streakDays: user.streakDays,
-      level: calculateLevel(user.totalPoints),
+      completionRate: user.habits.length > 0 ? (todaysLogs.length / user.habits.length) * 100 : 0,
     },
   });
 }

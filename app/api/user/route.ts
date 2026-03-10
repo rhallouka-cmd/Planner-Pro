@@ -21,6 +21,7 @@ export async function GET(request: NextRequest) {
         habits: {
           select: { id: true, category: true },
         },
+        achievements: true,
       },
     });
 
@@ -33,7 +34,7 @@ export async function GET(request: NextRequest) {
 
     // Calculate achievements display
     const achievementDisplays = (user.achievements || [])
-      .map((id) => getAchievementDisplay(id))
+      .map((achievement) => getAchievementDisplay(achievement.id))
       .filter(Boolean);
 
     // Count habits by category

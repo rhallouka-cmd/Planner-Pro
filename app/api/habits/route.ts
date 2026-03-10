@@ -1,11 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { auth } from '@/auth';
 
 // GET /api/habits - Fetch all habits for a user
 export async function GET(request: NextRequest) {
   try {
-    // For now, we'll use a default user ID. In production, this would come from session/auth
-    const userId = 'default-user-id';
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+    const userId = session.user.id;
 
     const habits = await prisma.habit.findMany({
       where: { userId },
@@ -25,6 +32,14 @@ export async function GET(request: NextRequest) {
 // POST /api/habits - Create a new habit
 export async function POST(request: NextRequest) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+    const userId = session.user.id;
     const body = await request.json();
     const { title, category, description } = body;
 
@@ -34,25 +49,6 @@ export async function POST(request: NextRequest) {
         { error: 'Title and category are required' },
         { status: 400 }
       );
-    }
-
-    // For now, we'll use a default user ID
-    const userId = 'default-user-id';
-
-    // Ensure user exists
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-    });
-
-    if (!user) {
-      // Create a default user if it doesn't exist
-      await prisma.user.create({
-        data: {
-          id: userId,
-          email: 'demo@example.com',
-          name: 'Demo User',
-        },
-      });
     }
 
     const habit = await prisma.habit.create({

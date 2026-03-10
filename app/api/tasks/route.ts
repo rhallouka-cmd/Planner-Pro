@@ -1,10 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { auth } from '@/auth';
 
 // GET /api/tasks - Fetch all tasks for a user
 export async function GET(request: NextRequest) {
   try {
-    const userId = 'default-user-id';
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+    const userId = session.user.id;
 
     const tasks = await prisma.task.findMany({
       where: { userId },
@@ -24,6 +32,14 @@ export async function GET(request: NextRequest) {
 // POST /api/tasks - Create a new task
 export async function POST(request: NextRequest) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+    const userId = session.user.id;
     const body = await request.json();
     const { title, category, description, priority, dueDate } = body;
 
@@ -32,24 +48,6 @@ export async function POST(request: NextRequest) {
         { error: 'Title and category are required' },
         { status: 400 }
       );
-    }
-
-    const userId = 'default-user-id';
-
-    // Ensure user exists
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-    });
-
-    if (!user) {
-      // Create default user if it doesn't exist
-      await prisma.user.create({
-        data: {
-          id: userId,
-          email: 'demo@example.com',
-          name: 'Demo User',
-        },
-      });
     }
 
     const task = await prisma.task.create({

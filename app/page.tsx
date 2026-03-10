@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Pencil, Trash2, X, CheckCircle2, Circle, Flame, Settings, Bell, TrendingUp, Award, Zap, Calendar, Check, AlertCircle, Loader } from 'lucide-react';
+import { useSession, signOut } from 'next-auth/react';
+import { Plus, Pencil, Trash2, X, CheckCircle2, Circle, Flame, Settings, Bell, TrendingUp, Award, Zap, Calendar, Check, AlertCircle, Loader, LogOut } from 'lucide-react';
 
 interface APIHabit {
   id: string;
@@ -46,6 +47,7 @@ interface APIResponse<T> {
 }
 
 export default function Home() {
+  const { data: session, status } = useSession();
   const [habits, setHabits] = useState<HabitsState>({
     university: [],
     projects: [],
@@ -72,8 +74,17 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'analytics' | 'university' | 'projects' | 'gym'>('dashboard');
   const [toasts, setToasts] = useState<Toast[]>([]);
 
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      window.location.href = '/login';
+    }
+  }, [status]);
+
   // Fetch habits from API on mount
   useEffect(() => {
+    if (status !== 'authenticated') return;
+
     const fetchInitialData = async () => {
       try {
         setLoading(true);
@@ -126,7 +137,7 @@ export default function Home() {
     };
 
     fetchInitialData();
-  }, []);
+  }, [status]);
 
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
     const id = Date.now().toString();
@@ -565,7 +576,7 @@ export default function Home() {
                     📈 Stats
                   </button>
                   <hr className="border-slate-700 my-2" />
-                  <button className="w-full text-left px-4 py-2 hover:bg-red-500/20 rounded-lg transition-colors text-red-400 text-sm font-medium">
+                  <button onClick={() => signOut({ redirect: true, callbackUrl: '/login' })} className="w-full text-left px-4 py-2 hover:bg-red-500/20 rounded-lg transition-colors text-red-400 text-sm font-medium">
                     🚪 Logout
                   </button>
                 </div>

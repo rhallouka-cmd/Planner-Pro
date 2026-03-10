@@ -1,11 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { calculateLevel, getAchievementDisplay } from '@/lib/gamification';
+import { auth } from '@/auth';
 
 // GET /api/user - Get current user stats
 export async function GET(request: NextRequest) {
   try {
-    const userId = 'default-user-id';
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+    const userId = session.user.id;
 
     const user = await prisma.user.findUnique({
       where: { id: userId },

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { updateUserStats, getAchievementDisplay } from '@/lib/gamification';
+import { auth } from '@/auth';
 
 // POST /api/habits/[id]/toggle - Toggle habit completion status
 export async function POST(
@@ -8,6 +9,14 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+    const userId = session.user.id;
     const { id } = await params;
     
     // Get today's date at midnight UTC
@@ -20,7 +29,7 @@ export async function POST(
       where: { id },
     });
 
-    if (!habit) {
+    if (!habit || habit.userId !== userId) {
       return NextResponse.json(
         { error: 'Habit not found' },
         { status: 404 }
@@ -48,7 +57,7 @@ export async function POST(
       isCompletedToday = false;
     } else {
       // Create a log entry (mark as complete)
-      habitLog = await prisma.habitLog.create({
+      const habitLog = await prisma.habitLog.create({
         data: {
           habitId: id,
           dateCompleted: todayDateTime,

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { auth } from '@/auth';
 
 // GET /api/habits/[id] - Fetch a single habit
 export async function GET(
@@ -7,13 +8,21 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
     const { id } = await params;
+    const userId = session.user.id;
 
     const habit = await prisma.habit.findUnique({
       where: { id },
     });
 
-    if (!habit) {
+    if (!habit || habit.userId !== userId) {
       return NextResponse.json(
         { error: 'Habit not found' },
         { status: 404 }
@@ -36,9 +45,29 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
     const { id } = await params;
+    const userId = session.user.id;
     const body = await request.json();
     const { title, description, category } = body;
+
+    // Verify the habit belongs to the user
+    const existingHabit = await prisma.habit.findUnique({
+      where: { id },
+    });
+
+    if (!existingHabit || existingHabit.userId !== userId) {
+      return NextResponse.json(
+        { error: 'Habit not found' },
+        { status: 404 }
+      );
+    }
 
     const habit = await prisma.habit.update({
       where: { id },
@@ -71,7 +100,27 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
     const { id } = await params;
+    const userId = session.user.id;
+
+    // Verify the habit belongs to the user
+    const existingHabit = await prisma.habit.findUnique({
+      where: { id },
+    });
+
+    if (!existingHabit || existingHabit.userId !== userId) {
+      return NextResponse.json(
+        { error: 'Habit not found' },
+        { status: 404 }
+      );
+    }
 
     await prisma.habit.delete({
       where: { id },
